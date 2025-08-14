@@ -1,0 +1,8 @@
+{
+  "short_name": "Cycle Marketplace",
+  "name": "Cycle Marketplace - Buy and Sell Cycles",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff"
+}
