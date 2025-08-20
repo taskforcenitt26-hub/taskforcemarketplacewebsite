@@ -74,13 +74,6 @@ const HoldManagement = () => {
     }
   }, [releaseHold]);
 
-  const formatPrice = useCallback((price) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(price);
-  }, []);
-
   const isExpired = useCallback((holdEndTime) => {
     return new Date(holdEndTime) <= new Date();
   }, []);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 export const useCycles = () => {
@@ -6,7 +6,7 @@ export const useCycles = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const toDriveDirectUrl = (url) => {
+  const toDriveDirectUrl = useCallback((url) => {
     if (!url) return '';
     try {
       const match = url.match(/(?:file\/d\/|open\?id=|uc\?id=)([\w-]{10,})/);
@@ -17,9 +17,9 @@ export const useCycles = () => {
     } catch {
       return url;
     }
-  };
+  }, []);
 
-  const fetchCycles = async () => {
+  const fetchCycles = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -38,11 +38,11 @@ export const useCycles = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toDriveDirectUrl]);
 
   useEffect(() => {
     fetchCycles();
-  }, []);
+  }, [fetchCycles]);
 
   const addCycle = async (cycleData) => {
     try {
