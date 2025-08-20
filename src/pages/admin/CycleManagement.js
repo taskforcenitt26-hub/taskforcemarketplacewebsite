@@ -13,7 +13,7 @@ const CycleManagement = () => {
   const filteredCycles = cycles.filter(cycle => {
     const matchesSearch = cycle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          cycle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         cycle.serial_number.toLowerCase().includes(searchTerm.toLowerCase());
+                         cycle.brand.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -26,13 +26,6 @@ const CycleManagement = () => {
         alert('Cycle deleted successfully');
       }
     }
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(price);
   };
 
   if (loading) {
@@ -73,9 +66,6 @@ const CycleManagement = () => {
                   Cycle
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -97,12 +87,9 @@ const CycleManagement = () => {
                       )}
                       <div>
                         <div className="text-sm font-medium text-gray-900">{cycle.name}</div>
-                        <div className="text-sm text-gray-500">SN: {cycle.serial_number} • {cycle.model}</div>
+                        <div className="text-sm text-gray-500">{cycle.brand} • {cycle.model}</div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatPrice(cycle.price)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

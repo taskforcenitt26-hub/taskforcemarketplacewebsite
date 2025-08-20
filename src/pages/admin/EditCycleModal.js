@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useCycles } from '../../hooks/useCycles';
 import { InlineLoader } from '../../components/SimpleLoaders';
+import { supabase } from '../../lib/supabase';
 
 const EditCycleModal = ({ cycle, onClose }) => {
   const { updateCycle } = useCycles();
@@ -10,23 +11,11 @@ const EditCycleModal = ({ cycle, onClose }) => {
     name: cycle.name || '',
     brand: cycle.brand || '',
     model: cycle.model || '',
-    type: cycle.type || 'Mountain',
-    price: cycle.price || '',
     description: cycle.description || '',
     image_url: cycle.image_url || '',
-    stock_quantity: cycle.stock_quantity || 1,
-    is_available: cycle.is_available || true,
-    specifications: cycle.specifications || {
-      frame: '',
-      gears: '',
-      wheel_size: '',
-      weight: '',
-      brake_type: ''
-    },
-    features: cycle.features && cycle.features.length > 0 ? cycle.features : ['']
+    is_available: cycle.is_available ?? true,
   });
-
-  const cycleTypes = ['Mountain', 'Road', 'City', 'Electric', 'Hybrid', 'BMX'];
+  const [imageFile, setImageFile] = useState(null);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -36,65 +25,34 @@ const EditCycleModal = ({ cycle, onClose }) => {
     }));
   };
 
-  const handleSpecificationChange = (key, value) => {
-    setFormData(prev => ({
-      ...prev,
-      specifications: {
-        ...prev.specifications,
-        [key]: value
-      }
-    }));
-  };
-
-  const handleFeatureChange = (index, value) => {
-    const newFeatures = [...formData.features];
-    newFeatures[index] = value;
-    setFormData(prev => ({
-      ...prev,
-      features: newFeatures
-    }));
-  };
-
-  const addFeature = () => {
-    setFormData(prev => ({
-      ...prev,
-      features: [...prev.features, '']
-    }));
-  };
-
-  const removeFeature = (index) => {
-    if (formData.features.length > 1) {
-      const newFeatures = formData.features.filter((_, i) => i !== index);
-      setFormData(prev => ({
-        ...prev,
-        features: newFeatures
-      }));
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Clean up features (remove empty ones)
-      const cleanFeatures = formData.features.filter(feature => feature.trim() !== '');
-      
-      // Clean up specifications (remove empty ones)
-      const cleanSpecifications = {};
-      Object.keys(formData.specifications).forEach(key => {
-        if (formData.specifications[key].trim() !== '') {
-          cleanSpecifications[key] = formData.specifications[key];
-        }
-      });
+      let imageUrl = formData.image_url || '';
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const filePath = `cycles/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt || 'jpg'}`;
+        const { error: uploadError } = await supabase.storage
+          .from('cycle-images')
+          .upload(filePath, imageFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: imageFile.type || 'image/jpeg'
+          });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from('cycle-images').getPublicUrl(filePath);
+        imageUrl = data.publicUrl;
+      }
 
       const updateData = {
-        ...formData,
-        price: parseFloat(formData.price),
-        stock_quantity: parseInt(formData.stock_quantity),
-        features: cleanFeatures,
-        specifications: cleanSpecifications,
-        updated_at: new Date().toISOString()
+        name: formData.name,
+        brand: formData.brand,
+        model: formData.model,
+        description: formData.description,
+        image_url: imageUrl,
+        is_available: !!formData.is_available,
       };
 
       const result = await updateCycle(cycle.id, updateData);
@@ -131,7 +89,7 @@ const EditCycleModal = ({ cycle, onClose }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Cycle Name *
+                Serial Number *
               </label>
               <input
                 type="text"
@@ -140,7 +98,7 @@ const EditCycleModal = ({ cycle, onClose }) => {
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter cycle name"
+                placeholder="Enter serial number"
               />
             </div>
 
@@ -173,56 +131,6 @@ const EditCycleModal = ({ cycle, onClose }) => {
                 placeholder="Enter model"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Type *
-              </label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {cycleTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price ($) *
-              </label>
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                required
-                min="0"
-                step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="0.00"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Stock Quantity *
-              </label>
-              <input
-                type="number"
-                name="stock_quantity"
-                value={formData.stock_quantity}
-                onChange={handleChange}
-                required
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="0"
-              />
-            </div>
           </div>
 
           {/* Description */}
@@ -240,111 +148,28 @@ const EditCycleModal = ({ cycle, onClose }) => {
             />
           </div>
 
-          {/* Image URL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Image URL
-            </label>
-            <input
-              type="url"
-              name="image_url"
-              value={formData.image_url}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="https://example.com/image.jpg"
-            />
-            {formData.image_url && (
+          {/* Image Upload */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Upload Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            {/* Preview selected or existing image */}
+            {(imageFile || formData.image_url) && (
               <div className="mt-2">
                 <img
-                  src={formData.image_url}
+                  src={imageFile ? URL.createObjectURL(imageFile) : formData.image_url}
                   alt="Preview"
-                  className="w-20 h-20 object-cover rounded border"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
+                  className="w-24 h-24 object-cover rounded border"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               </div>
             )}
-          </div>
-
-          {/* Specifications */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Specifications
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                value={formData.specifications.frame || ''}
-                onChange={(e) => handleSpecificationChange('frame', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Frame material"
-              />
-              <input
-                type="text"
-                value={formData.specifications.gears || ''}
-                onChange={(e) => handleSpecificationChange('gears', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Number of gears"
-              />
-              <input
-                type="text"
-                value={formData.specifications.wheel_size || ''}
-                onChange={(e) => handleSpecificationChange('wheel_size', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Wheel size"
-              />
-              <input
-                type="text"
-                value={formData.specifications.weight || ''}
-                onChange={(e) => handleSpecificationChange('weight', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Weight"
-              />
-              <input
-                type="text"
-                value={formData.specifications.brake_type || ''}
-                onChange={(e) => handleSpecificationChange('brake_type', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Brake type"
-              />
-            </div>
-          </div>
-
-          {/* Features */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Features
-            </label>
-            <div className="space-y-2">
-              {formData.features.map((feature, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={feature}
-                    onChange={(e) => handleFeatureChange(index, e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter feature"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeFeature(index)}
-                    className="text-red-600 hover:text-red-800 transition-colors"
-                    disabled={formData.features.length === 1}
-                  >
-                    <Minus size={20} />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addFeature}
-                className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                <Plus size={16} />
-                <span>Add Feature</span>
-              </button>
-            </div>
           </div>
 
           {/* Availability */}

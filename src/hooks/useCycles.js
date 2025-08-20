@@ -6,6 +6,19 @@ export const useCycles = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const toDriveDirectUrl = (url) => {
+    if (!url) return '';
+    try {
+      const match = url.match(/(?:file\/d\/|open\?id=|uc\?id=)([\w-]{10,})/);
+      if (match && match[1]) {
+        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      }
+      return url;
+    } catch {
+      return url;
+    }
+  };
+
   const fetchCycles = async () => {
     try {
       setLoading(true);
@@ -15,7 +28,11 @@ export const useCycles = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCycles(data || []);
+      const normalized = (data || []).map(c => ({
+        ...c,
+        image_url: toDriveDirectUrl(c.image_url),
+      }));
+      setCycles(normalized);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -29,14 +46,19 @@ export const useCycles = () => {
 
   const addCycle = async (cycleData) => {
     try {
+      // Upsert by unique Serial Number (name)
       const { data, error } = await supabase
         .from('cycles')
-        .insert([cycleData])
+        .upsert([cycleData], { onConflict: 'name' })
         .select()
         .single();
 
       if (error) throw error;
-      setCycles(prev => [data, ...prev]);
+      const normalized = { ...data, image_url: toDriveDirectUrl(data.image_url) };
+      setCycles(prev => {
+        const exists = prev.some(c => c.id === normalized.id);
+        return exists ? prev.map(c => (c.id === normalized.id ? normalized : c)) : [normalized, ...prev];
+      });
       return { data, error: null };
     } catch (err) {
       return { data: null, error: err.message };
@@ -53,7 +75,8 @@ export const useCycles = () => {
         .single();
 
       if (error) throw error;
-      setCycles(prev => prev.map(cycle => cycle.id === id ? data : cycle));
+      const normalized = { ...data, image_url: toDriveDirectUrl(data.image_url) };
+      setCycles(prev => prev.map(cycle => cycle.id === id ? normalized : cycle));
       return { data, error: null };
     } catch (err) {
       return { data: null, error: err.message };

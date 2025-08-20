@@ -8,13 +8,13 @@ import {
   Clock, 
   Plus,
   TrendingUp,
-  Mail
+  CreditCard
 } from 'lucide-react';
-import HomepageBG from '../../assets/HomepageBG.png';
+import HomepageBG from '../../assets/HomepageBG.webp';
 import CycleManagement from './CycleManagement';
 import HoldManagement from './HoldManagement';
-import ContactManagement from './ContactManagement';
 import AddCycleModal from './AddCycleModal';
+import PaymentRequestsPanel from './PaymentRequestsPanel';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -22,25 +22,17 @@ const AdminDashboard = () => {
   const { holds } = useHolds();
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [introEnabled, setIntroEnabled] = useState(() => localStorage.getItem('introEnabled') === 'true');
 
   // Calculate statistics
   const totalCycles = cycles.length;
   const availableCycles = cycles.filter(cycle => cycle.is_available).length;
   const activeHolds = holds.filter(hold => hold.is_active).length;
 
-  // Handler to toggle intro screen availability
-  const handleToggleIntro = () => {
-    const newVal = !introEnabled;
-    setIntroEnabled(newVal);
-    localStorage.setItem('introEnabled', newVal);
-  };
-
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <BarChart3 size={20} className="text-yellow-600" /> },
     { id: 'cycles', label: 'Cycle Management', icon: <Bike size={20} className="text-yellow-600" /> },
     { id: 'holds', label: 'Hold Management', icon: <Clock size={20} className="text-yellow-600" /> },
-    { id: 'contacts', label: 'Contact Messages', icon: <Mail size={20} className="text-yellow-600" /> },
+    { id: 'requests', label: 'Payment Requests', icon: <CreditCard size={20} className="text-yellow-600" /> },
   ];
 
   const stats = [
@@ -67,8 +59,8 @@ const AdminDashboard = () => {
         return <CycleManagement />;
       case 'holds':
         return <HoldManagement />;
-      case 'contacts':
-        return <ContactManagement />;
+      case 'requests':
+        return <PaymentRequestsPanel />;
       default:
         return (
           <div className="space-y-6">
@@ -83,32 +75,6 @@ const AdminDashboard = () => {
                     <p className="text-3xl font-extrabold text-gray-900">{stat.value}</p>
                   </div>
                 ))}
-              </div>
-
-              {/* Recent Activity */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Recent Holds */}
-                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Holds</h3>
-                  <div className="space-y-3">
-                    {holds.slice(0, 5).map((hold) => (
-                      <div key={hold.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{hold.cycles?.name}</p>
-                          <p className="text-sm text-gray-600">{hold.customer_name}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-orange-600">
-                            {new Date(hold.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    {holds.length === 0 && (
-                      <p className="text-gray-500 text-center py-4">No holds yet</p>
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -133,13 +99,6 @@ const AdminDashboard = () => {
               </div>
               <div className="flex items-center space-x-4">
                 <button
-                  onClick={handleToggleIntro}
-                  className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 border  ${introEnabled ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' : 'bg-gray-200 text-gray-700 border-gray-300 hover:bg-gray-300'}`}
-                >
-                  {introEnabled ? 'Disable Intro' : 'Enable Intro'}
-                </button>
-
-                <button
                   onClick={() => setShowAddModal(true)}
                   className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 px-6 py-3 rounded-xl hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-1 active:scale-95"
                 >
@@ -158,10 +117,10 @@ const AdminDashboard = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-semibold text-sm transition-colors ${
+                    className={`flex items-center space-x-2 py-4 px-1 font-semibold text-sm transition-colors ${
                       activeTab === tab.id
-                        ? 'border-yellow-500 text-yellow-600'
-                        : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
+                        ? 'text-yellow-600'
+                        : 'text-gray-400 hover:text-gray-600'
                     }`}
                   >
                     {tab.icon}

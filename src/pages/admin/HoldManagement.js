@@ -1,30 +1,69 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useHolds } from '../../hooks/useHolds';
 import { Clock, User, Phone, Mail, X, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { SectionLoader } from '../../components/SimpleLoaders';
 
 const HoldManagement = () => {
-  const { holds, loading, releaseHold, getRemainingTime } = useHolds();
+  const { holds, loading, releaseHold } = useHolds();
   const [remainingTimes, setRemainingTimes] = useState({});
+  const holdsRef = useRef(holds);
+  const intervalRef = useRef(null);
+
+  // Keep a ref to latest holds without re-running the interval effect
+  useEffect(() => {
+    holdsRef.current = holds;
+  }, [holds]);
+
+  // Memoize the time computation function
+  const computeRemainingTime = useCallback((holdEndTime) => {
+    const endTime = new Date(holdEndTime).getTime();
+    const now = Date.now();
+    const diff = Math.max(0, endTime - now);
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, []);
+
+  // Memoize the update function
+  const updateTimes = useCallback(() => {
+    const currentHolds = holdsRef.current || [];
+    if (currentHolds.length === 0) {
+      setRemainingTimes({});
+      return;
+    }
+
+    const newTimes = {};
+    currentHolds.forEach(hold => {
+      newTimes[hold.id] = computeRemainingTime(hold.hold_end_time);
+    });
+    
+    // Only update state if times have actually changed
+    setRemainingTimes(prevTimes => {
+      const hasChanged = Object.keys(newTimes).some(id => 
+        newTimes[id] !== prevTimes[id]
+      ) || Object.keys(prevTimes).length !== Object.keys(newTimes).length;
+      
+      return hasChanged ? newTimes : prevTimes;
+    });
+  }, [computeRemainingTime]);
 
   // Update remaining times every second
   useEffect(() => {
-    const updateTimes = () => {
-      const newTimes = {};
-      holds.forEach(hold => {
-        newTimes[hold.id] = getRemainingTime(hold.hold_end_time);
-      });
-      setRemainingTimes(newTimes);
+    updateTimes(); // Initial update
+    
+    intervalRef.current = setInterval(updateTimes, 1000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
+  }, [updateTimes]);
 
-    updateTimes();
-    const interval = setInterval(updateTimes, 1000);
-
-    return () => clearInterval(interval);
-  }, [holds, getRemainingTime]);
-
-  const handleReleaseHold = async (holdId, cycleName) => {
+  const handleReleaseHold = useCallback(async (holdId, cycleName) => {
     if (window.confirm(`Are you sure you want to release the hold on "${cycleName}"?`)) {
       const result = await releaseHold(holdId);
       if (result.error) {
@@ -33,18 +72,27 @@ const HoldManagement = () => {
         alert('Hold released successfully');
       }
     }
-  };
+  }, [releaseHold]);
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatPrice = useCallback((price) => {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'INR'
     }).format(price);
-  };
+  }, []);
 
-  const isExpired = (holdEndTime) => {
+  const isExpired = useCallback((holdEndTime) => {
     return new Date(holdEndTime) <= new Date();
-  };
+  }, []);
+
+  // Memoize statistics to prevent unnecessary recalculations
+  const statistics = useMemo(() => {
+    const activeHolds = holds.filter(hold => !isExpired(hold.hold_end_time)).length;
+    const expiredHolds = holds.filter(hold => isExpired(hold.hold_end_time)).length;
+    const totalHolds = holds.length;
+    
+    return { activeHolds, expiredHolds, totalHolds };
+  }, [holds, isExpired]);
 
   if (loading) {
     return <SectionLoader message="Loading cycle holds..." size="lg" />;
@@ -106,7 +154,7 @@ const HoldManagement = () => {
                     {hold.cycles?.brand} - {hold.cycles?.model}
                   </p>
                   <p className="text-lg font-bold text-green-600">
-                    {formatPrice(hold.cycles?.price)}
+                    Starting from ₹2,750
                   </p>
                 </div>
                 <button
@@ -193,19 +241,19 @@ const HoldManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-600">
-              {holds.filter(hold => !isExpired(hold.hold_end_time)).length}
+              {statistics.activeHolds}
             </div>
             <div className="text-sm text-gray-600">Active Holds</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-red-600">
-              {holds.filter(hold => isExpired(hold.hold_end_time)).length}
+              {statistics.expiredHolds}
             </div>
             <div className="text-sm text-gray-600">Expired Holds</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {holds.length}
+              {statistics.totalHolds}
             </div>
             <div className="text-sm text-gray-600">Total Holds</div>
           </div>

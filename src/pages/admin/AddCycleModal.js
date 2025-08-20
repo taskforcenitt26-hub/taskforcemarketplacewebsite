@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useCycles } from '../../hooks/useCycles';
 import { InlineLoader } from '../../components/SimpleLoaders';
+import { supabase } from '../../lib/supabase';
 
 const AddCycleModal = ({ onClose }) => {
   const { addCycle } = useCycles();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    serial_number: 'tf',
+    name: '', // storing serial number here to keep compatibility
+    brand: '',
     model: '',
-
     description: '',
-    image_url: '',
-    is_available: true
+    is_available: true,
   });
+  const [imageFile, setImageFile] = useState(null);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -24,14 +24,48 @@ const AddCycleModal = ({ onClose }) => {
     }));
   };
 
+  // Upload selected image to Supabase Storage and return public URL
+  const uploadImageIfNeeded = async () => {
+    if (!imageFile) throw new Error('Please upload a cycle image.');
+    const fileExt = imageFile.name.split('.').pop();
+    const filePath = `cycles/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt || 'jpg'}`;
+    const { error: uploadError } = await supabase.storage
+      .from('cycle-images')
+      .upload(filePath, imageFile, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: imageFile.type || 'image/jpeg'
+      });
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from('cycle-images').getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      if (!imageFile) {
+        alert('Please upload a cycle image before submitting.');
+        return;
+      }
+      // Prevent duplicate Serial Number (name) before insert
+      const { data: existing, error: existsErr } = await supabase
+        .from('cycles')
+        .select('id')
+        .eq('name', formData.name.trim())
+        .limit(1);
+      if (existsErr) throw existsErr;
+      if (existing && existing.length > 0) {
+        alert('A cycle with this Serial Number already exists. Please use a unique Serial Number.');
+        return;
+      }
+
+      const publicImageUrl = await uploadImageIfNeeded();
       const cycleData = {
         ...formData,
-
+        image_url: publicImageUrl,
       };
 
       const result = await addCycle(cycleData);
@@ -67,32 +101,34 @@ const AddCycleModal = ({ onClose }) => {
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Cycle Name *
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Serial Number *
               </label>
               <input
+                id="name"
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter cycle name"
+                placeholder="Enter serial number"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Serial Number *
+              <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-1">
+                Brand *
               </label>
               <input
+                id="brand"
                 type="text"
-                name="serial_number"
-                value={formData.serial_number}
+                name="brand"
+                value={formData.brand}
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="tf001"
+                placeholder="Enter brand name"
               />
             </div>
 
@@ -110,8 +146,6 @@ const AddCycleModal = ({ onClose }) => {
                 placeholder="Enter model"
               />
             </div>
-
-
           </div>
 
           {/* Description */}
@@ -129,19 +163,28 @@ const AddCycleModal = ({ onClose }) => {
             />
           </div>
 
-          {/* Image URL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Image URL
-            </label>
-            <input
-              type="url"
-              name="image_url"
-              value={formData.image_url}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="https://example.com/image.jpg"
-            />
+          {/* Image (upload only) */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Upload Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+            {imageFile && (
+              <div className="mt-2">
+                <img
+                  src={URL.createObjectURL(imageFile)}
+                  alt="Preview"
+                  className="w-24 h-24 object-cover rounded border"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Availability */}

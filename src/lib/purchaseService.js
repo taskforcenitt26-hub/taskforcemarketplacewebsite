@@ -1,78 +1,149 @@
 import { supabase } from './supabase';
 
 /**
- * Saves a purchase record to the database
+ * Save a purchase to the database
  * @param {Object} purchaseData - The purchase data to save
- * @param {Object} purchaseData.user - User information
- * @param {string} purchaseData.user.id - User ID (optional)
- * @param {string} purchaseData.user.name - User's full name
- * @param {string} purchaseData.user.email - User's email
- * @param {string} purchaseData.user.phone - User's phone number (optional)
- * @param {Object} purchaseData.cycle - The cycle being purchased
- * @param {number} purchaseData.amount - Total amount paid
- * @param {string} purchaseData.paymentMethod - Payment method used
- * @param {string} purchaseData.transactionReference - Payment reference/ID
- * @param {boolean} purchaseData.includeLock - Whether a lock was included
- * @param {number} purchaseData.lockPrice - Price of the lock if included
- * @param {Object} purchaseData.billingAddress - Billing address (optional)
- * @returns {Promise<Object>} - The created purchase record or error
+ * @returns {Promise<{data: any, error: any}>} - The result of the database operation
  */
 export const savePurchase = async (purchaseData) => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  const purchase = {
-    user_id: user?.id || null,
-    customer_name: purchaseData.user.name,
-    customer_email: purchaseData.user.email,
-    customer_phone: purchaseData.user.phone || null,
-    cycle_id: purchaseData.cycle.id,
-    cycle_details: {
-      name: purchaseData.cycle.name,
-      brand: purchaseData.cycle.brand,
-      model: purchaseData.cycle.model,
-      price: purchaseData.cycle.price,
-      image_url: purchaseData.cycle.image_url
-    },
-    amount_paid: purchaseData.amount,
-    payment_method: purchaseData.paymentMethod,
-    payment_status: 'completed',
-    transaction_reference: purchaseData.transactionReference,
-    include_lock: purchaseData.includeLock,
-    lock_price: purchaseData.lockPrice || 0,
-    billing_address: purchaseData.billingAddress || null,
-    notes: `Purchase completed via ${purchaseData.paymentMethod} on ${new Date().toISOString()}`
-  };
+  try {
+    const { data, error } = await supabase
+      .from('purchases')
+      .insert([purchaseData])
+      .select();
 
-  const { data, error } = await supabase
-    .from('purchases')
-    .insert([purchase])
-    .select()
-    .single();
+    if (error) {
+      console.error('Error saving purchase:', error);
+      return { data: null, error };
+    }
 
-  if (error) {
-    console.error('Error saving purchase:', error);
-    throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Unexpected error saving purchase:', error);
+    return { data: null, error };
   }
-
-  return data;
 };
 
 /**
- * Fetches a user's purchase history
- * @param {string} userId - The user's ID
- * @returns {Promise<Array>} - Array of purchase records
+ * Get all purchases for a specific user
+ * @param {string} userId - The user ID to get purchases for
+ * @returns {Promise<{data: any[], error: any}>} - The purchases data
  */
 export const getUserPurchases = async (userId) => {
-  const { data, error } = await supabase
-    .from('purchases')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('purchases')
+      .select(`
+        *,
+        cycles (
+          id,
+          name,
+          brand,
+          model,
+          type,
+          image_url
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching purchases:', error);
-    throw error;
+    if (error) {
+      console.error('Error fetching user purchases:', error);
+      return { data: [], error };
+    }
+
+    return { data: data || [], error: null };
+  } catch (error) {
+    console.error('Unexpected error fetching user purchases:', error);
+    return { data: [], error };
   }
+};
 
-  return data || [];
+/**
+ * Get all purchases (admin function)
+ * @returns {Promise<{data: any[], error: any}>} - All purchases data
+ */
+export const getAllPurchases = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('purchases')
+      .select(`
+        *,
+        cycles (
+          id,
+          name,
+          brand,
+          model,
+          type,
+          image_url
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all purchases:', error);
+      return { data: [], error };
+    }
+
+    return { data: data || [], error: null };
+  } catch (error) {
+    console.error('Unexpected error fetching all purchases:', error);
+    return { data: [], error };
+  }
+};
+
+/**
+ * Get a purchase by bill number (order_id)
+ * @param {string} billNumber
+ * @returns {Promise<{data: any, error: any}>}
+ */
+export const getPurchaseByBillNumber = async (billNumber) => {
+  try {
+    const { data, error } = await supabase
+      .from('purchases')
+      .select(`
+        *,
+        cycles (
+          id,
+          name,
+          brand,
+          model,
+          image_url,
+          computedPrice,
+          price
+        )
+      `)
+      .eq('bill_number', billNumber)
+      .single();
+    if (error) return { data: null, error };
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+/**
+ * Update purchase status
+ * @param {string} purchaseId - The purchase ID to update
+ * @param {string} status - The new status
+ * @returns {Promise<{data: any, error: any}>} - The result of the update operation
+ */
+export const updatePurchaseStatus = async (purchaseId, status) => {
+  try {
+    const { data, error } = await supabase
+      .from('purchases')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', purchaseId)
+      .select();
+
+    if (error) {
+      console.error('Error updating purchase status:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Unexpected error updating purchase status:', error);
+    return { data: null, error };
+  }
 };

@@ -1,148 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import Header from './components/Layout/Header';
-import Footer from './components/Layout/Footer';
-import IntroOverlay from './components/IntroOverlay';
-import LaunchPage from './pages/LaunchPage';
-import ProtectedRoute from './components/ProtectedRoute';
+import React from 'react'; /* Imports the React library to use JSX and React features. */
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'; /* Imports React Router components for navigation: Router for wrapping the app, Routes for defining route groups, and Route for individual pages. */
+import { AuthProvider } from './contexts/AuthContext'; /* Imports a custom context provider for authentication state across the app. */
 
-// Pages
-import Home from './pages/Home';
-import Cycles from './pages/Cycles';
-import Contact from './pages/Contact';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Payment from './pages/Payment';
-import PaymentSuccess from './pages/PaymentSuccess';
-import PurchaseHistory from './pages/PurchaseHistory';
-import AdminDashboard from './pages/admin/AdminDashboard';
+// Layout
+import Header from './components/Layout/Header'; /* Imports the Header layout component, displayed at the top of the app. */
+import Footer from './components/Layout/Footer'; /* Imports the Footer layout component, displayed at the bottom of the app. */
+import ScrollUp from './components/ScrollUp'; /* Imports a utility component to automatically scroll to the top on navigation. */
 
-// Assets
-import HomepageBG from './assets/HomepageBG.png';
+// Routes
+import ProtectedRoute from './components/ProtectedRoute'; /* Imports a wrapper for routes that require authentication, blocking unauthorized access. */
+import Home from './pages/Home'; /* Imports the Home page component for the root ("/") route. */
+import Cycles from './pages/Cycles'; /* Imports the Cycles page component, likely for browsing or listing cycles. */
+import Contact from './pages/Contact'; /* Imports the Contact page component. */
+import Login from './pages/Login'; /* Imports the Login page component for user authentication. */
+import Payment from './pages/Payment'; /* Imports the Payment page component to handle transactions. */
+import PaymentSuccess from './pages/PaymentSuccess'; /* Imports the page shown when a payment is successful. */
+import PaymentProcessing from './pages/PaymentProcessing'; /* Imports the page shown while payment is still being processed. */
+import AdminDashboard from './pages/admin/AdminDashboard'; /* Imports the Admin Dashboard page component, accessible to admins only. */
+import About from './pages/About'; /* Imports the About page component, likely describing the app or company. */
 
-// Simple pages
-const About = () => (
-  <section className="relative py-24 lg:py-32 overflow-hidden min-h-screen">
-    {/* Background Image */}
-    <div className="absolute inset-0">
-      <img
-        src={HomepageBG}
-        alt="About Us Background"
-        className="w-full h-full object-cover fixed top-0 left-0 z-[-1]"
-      />
-      <div className="absolute inset-0 bg-black bg-opacity-60"></div>
-    </div>
-
-    <div className="relative z-10 flex flex-col items-center justify-center max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-      <h1 className="text-4xl md:text-5xl font-bold mb-8">About Cycle Marketplace</h1>
-      <div className="prose prose-invert max-w-none">
-        <p className="text-lg mb-6">
-        Taskforce RECycle is a student-led initiative from <b>TaskForce NIT Trichy</b>, the social initiatives hub of our college. With strong support from the administration, we aim to promote sustainability while making student life easier one cycle at a time.<br />
-        <br />
-        We refurbish old bicycles and offer them to incoming first-year students on a rental basis, giving unused cycles a second life and reducing campus waste. What started as a simple idea has now grown into a movement with <b>100+ cycles</b> refurbished each year and counting. <br />
-        <br />
-        On this <b>10th year of operation</b>, we are proud to have made a significant impact on the campus community and look forward to continuing our mission of promoting sustainability and making student life easier one cycle at a time.
-        </p>
-        <h2 className="text-2xl font-semibold mb-4">Our Mission</h2>
-        <p className="mb-6">
-        To make mobility on campus eco-friendly, affordable, and accessible for every student.
-
-        </p>
-        <h2 className="text-2xl font-semibold mb-4">Why Choose Us?</h2>
-        <ul className="list-disc list-inside space-y-2 text-left mx-auto inline-block">
-          <li>Affordable rentals designed with students in mind</li>
-          <li>Eco-friendly alternative that reduces waste</li>
-          <li>Reliable refurbished cycles for everyday use</li>
-          <li>Convenient hold feature for decision making</li>
-          <li>Student-run with admin support for smooth operations</li>
-          <li>Trusted by hundreds of first-years every year</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-);
-
-
-
-function App() {
-  const [showIntro, setShowIntro] = useState(true);
-  
-  // Close intro
-  const handleCloseIntro = () => {
-    setShowIntro(false);
-    localStorage.setItem('introEnabled', 'false');
-  };
-
-  // Handle entering the site from launch page
-  const handleEnterSite = () => {
-    setShowIntro(true);
-    localStorage.setItem('introEnabled', 'false');
-  };
-
-  // Initialize the app
-  useEffect(() => {
-    // Skip intro for admin routes
-    if (window.location.pathname.startsWith('/admin')) {
-      setShowIntro(false);
-      return;
-    }
-
-    // Check if intro was already shown
-    const introShown = localStorage.getItem('introEnabled') === 'false';
-    
-    if (introShown) {
-      setShowIntro(false);
-    } else {
-      // Auto-close intro after 4.1 seconds
-      const timer = setTimeout(() => {
-        setShowIntro(false);
-        localStorage.setItem('introEnabled', 'false');
-      }, 4100);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-  
-  // Show launch page if intro is enabled and user hasn't entered yet
-  const showLaunchPage = localStorage.getItem('introEnabled') === 'true' && 
-                        !window.location.pathname.startsWith('/admin');
-  
-  if (showLaunchPage) {
-    return <LaunchPage onEnter={handleEnterSite} />;
-  }
+/* ===============================
+   Main App
+================================ */ /* Section header for clarity. */
+function App() { /* Defines the main App component which acts as the entry point for the UI. */
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App"> 
-          {showIntro && <IntroOverlay onClose={handleCloseIntro} />}
-          <Header />
-          <main>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/browse-cycles" element={<Cycles />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/admin" element={
-                <ProtectedRoute>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/purchase-history" element={
-                <ProtectedRoute>
-                  <PurchaseHistory />
-                </ProtectedRoute>
-              } />
-              <Route path="/payment" element={<Payment />} />
-              <Route path="/payment-success" element={<PaymentSuccess />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+    <AuthProvider> {/* Wraps the app in AuthProvider to give all child components access to authentication state and functions. */}
+      <Router> {/* Wraps the app with React Router's Router to enable client-side navigation. */}
+        <ScrollUp /> {/* Ensures each route change scrolls to the top of the page. */}
+        <div className="App"> {/* Main container with a className for styling. */}
+          <Header /> {/* Renders the Header component at the top of the app. */}
+          <main> {/* Semantic HTML tag for the main content area of the page. */}
+            <Routes> {/* Defines all available routes for navigation. */}
+              <Route path="/" element={<Home />} /> {/* Defines the root route ("/") which renders the Home page. */}
+              <Route path="/browse-cycles" element={<Cycles />} /> {/* Route for browsing cycles, rendering the Cycles page. */}
+              <Route path="/about" element={<About />} /> {/* Route for the About page. */}
+              <Route path="/contact" element={<Contact />} /> {/* Route for the Contact page. */}
+              <Route
+                path="/admin" /* Path for admin dashboard access. */
+                element={
+                  <ProtectedRoute> {/* Wraps AdminDashboard with ProtectedRoute to restrict access only to authenticated users. */}
+                    <AdminDashboard /> {/* Component shown if authentication passes. */}
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/payment" element={<Payment />} /> {/* Route for the Payment page. */}
+              <Route path="/payment-success" element={<PaymentSuccess />} /> {/* Route for the Payment Success page. */}
+              <Route path="/payment-processing" element={<PaymentProcessing />} /> {/* Route for the Payment Processing page. */}
+              <Route path="/login" element={<Login />} /> {/* Route for the Login page. */}
             </Routes>
           </main>
-          <Footer />
+          <Footer /> {/* Renders the Footer component at the bottom of the app. */}
         </div>
       </Router>
     </AuthProvider>
   );
 }
 
-export default App;
+export default App; /* Exports the App component as the default export so it can be used in index.js or elsewhere. */
