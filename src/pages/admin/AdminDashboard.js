@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCycles } from '../../hooks/useCycles';
 import { useHolds } from '../../hooks/useHolds';
+
 import { 
   BarChart3, 
   Bike, 
@@ -20,6 +21,7 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const { cycles } = useCycles();
   const { holds } = useHolds();
+
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddModal, setShowAddModal] = useState(false);
 

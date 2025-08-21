@@ -11,7 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LogOut, Menu, X } from 'lucide-react';  
 
 // Importing app logo
-import logo from '../../assets/logo.webp';  
+import logo from '../../assets/logo.webp';    
 
 // Defining Header functional component
 const Header = () => {  
@@ -31,7 +31,7 @@ const Header = () => {
   const handleSignOut = async () => {  
     await signOut();  // Sign out user from AuthContext
     navigate('/');    // Redirect to homepage
-  };  
+  };    
 
   // Base CSS classes for navigation links (desktop)
   const navLinkClass = `px-4 py-2 text-gray-600 hover:text-yellow-600 rounded-lg transition-all duration-300 font-medium relative group overflow-hidden`;  
@@ -112,7 +112,7 @@ const Header = () => {
             )}  
           </nav>  
 
-          {/* Authentication Section (only on desktop) */}
+          {/* Right side actions */}
           <div className="hidden md:flex items-center space-x-4">  
             {/* Sign Out button visible only if user is logged in */}
             {user && (  
