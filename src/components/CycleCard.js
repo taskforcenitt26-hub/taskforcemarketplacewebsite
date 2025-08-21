@@ -1,5 +1,6 @@
 // Importing React and hooks
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 // Importing icons from lucide-react (React icon library)
 import { Clock, ShoppingCart, Info } from 'lucide-react';
@@ -36,7 +37,24 @@ const CycleCard = ({ cycle, onHold, showHoldButton = true, activeHold = null }) 
   };
 
   // After seller code is verified, redirect to payment page with cycle info
-  const handleSellerCodeVerified = (selectedPlan, includeLock, aadharUrl, phoneNumber) => {
+  const handleSellerCodeVerified = async (selectedPlan, includeLock, aadharUrl, phoneNumber) => {
+    // Double-check availability on server to avoid race conditions
+    try {
+      const { data: latest, error } = await supabase
+        .from('cycles')
+        .select('id, is_available')
+        .eq('id', cycle.id)
+        .single();
+      if (error) throw error;
+      if (!latest?.is_available) {
+        showNotification('Unavailable', 'Sorry, this cycle has just been sold.', 'error');
+        setShowSellerCodeModal(false);
+        return;
+      }
+    } catch (_) {
+      // If check fails, proceed cautiously; UI will still block later if needed
+    }
+
     setShowSellerCodeModal(false); // close modal
     const computedPrice = (selectedPlan?.rent || 0) + (selectedPlan?.deposit || 0); // calculate total
     navigate('/payment', { // navigate with state

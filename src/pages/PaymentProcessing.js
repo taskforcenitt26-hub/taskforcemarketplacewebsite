@@ -90,6 +90,18 @@ const PaymentProcessing = () => {
             // Use purchase’s amount if available, otherwise fallback
             const paidAmountFinal = purchase?.amount ?? data.amount;
 
+            // Mark the cycle as SOLD (not available) to prevent multiple purchases
+            try {
+              if (data.cycle_id) {
+                await supabase
+                  .from('cycles')
+                  .update({ is_available: false })
+                  .eq('id', data.cycle_id);
+              }
+            } catch (_) {
+              // Non-blocking: even if this fails, continue to success; UI uses is_available to disable purchase
+            }
+
             // Redirect to success page with all details
             navigate('/payment-success', {
               replace: true, // Replace history so user can’t go back here
