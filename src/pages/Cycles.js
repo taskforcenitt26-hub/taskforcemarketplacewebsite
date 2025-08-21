@@ -1,5 +1,5 @@
 // Import React and useState hook
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 // Import Filter icon from lucide-react
 import { Filter } from 'lucide-react';
@@ -26,6 +26,9 @@ const Cycles = () => {
   // Get all available cycles using the custom hook
   const { cycles } = useCycles();
 
+  // Search term for serial number (e.g., TF001)
+  const [search, setSearch] = useState('');
+
   // Get all active holds (reservations) and function to create new hold
   const { holds, createHold } = useHolds();
   
@@ -39,8 +42,28 @@ const Cycles = () => {
   // For now, always use the first plan option (2-Year Plan) — no selection UI
   const [selectedPlan] = useState(planOptions[0]);
  
-  // Directly use cycles list without filters or sorting (simplified version)
-  const items = cycles;
+  // Helper: extract numeric part from names like TF118 -> 118
+  const serialNum = (name) => {
+    try {
+      const m = String(name || '').match(/(\d{1,})$/);
+      return m ? parseInt(m[1], 10) : Number.POSITIVE_INFINITY;
+    } catch {
+      return Number.POSITIVE_INFINITY;
+    }
+  };
+
+  // Normalize search input (case-insensitive, trim spaces)
+  const normSearch = search.trim().toUpperCase();
+
+  // Filter by serial and sort numerically ascending (TF001..TF118)
+  const items = useMemo(() => {
+    const filtered = cycles.filter(c => {
+      if (!normSearch) return true;
+      const name = String(c.name || '').toUpperCase();
+      return name.includes(normSearch);
+    });
+    return filtered.slice().sort((a, b) => serialNum(a.name) - serialNum(b.name));
+  }, [cycles, normSearch]);
  
   return (
     // Main section with background and content
@@ -75,7 +98,20 @@ const Cycles = () => {
             </p>
           </div>
 
-          {/* NOTE: Filters were removed as per request */}
+          {/* Search by Serial Number */}
+          <div className="max-w-xl mx-auto mb-10">
+            <label htmlFor="serialSearch" className="block text-sm font-medium text-gray-200 mb-2">
+              Search by Serial Number (e.g., TF001)
+            </label>
+            <input
+              id="serialSearch"
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Type TF001, TF045, ..."
+              className="w-full px-4 py-3 rounded-lg bg-white/90 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow"
+            />
+          </div>
 
           {/* Cycles Grid */}
           {items.length === 0 ? (
