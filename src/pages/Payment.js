@@ -11,7 +11,7 @@ const Payment = () => {
   const navigate = useNavigate();
 
   // Extract details from state or assign defaults
-  const { cycle, includeLockInitial = false, selectedPlan = null, aadharUrl = '' } = location.state || {};
+  const { cycle, includeLockInitial = false, selectedPlan = null, aadharUrl = '', phoneNumber = '' } = location.state || {};
 
   // === Available UPI IDs (for flexibility) ===
   const upiOptions = [
@@ -81,6 +81,7 @@ const Payment = () => {
         plan_rent: selectedPlan?.rent ?? null,
         plan_deposit: selectedPlan?.deposit ?? null,
         aadhar_url: aadharUrl || null,
+        buyer_phone: phoneNumber || null,
       };
 
       // Call backend service to store payment request
@@ -222,6 +223,9 @@ const Payment = () => {
               <p className="mt-2">Order ID: {orderId}</p>
               {selectedPlan?.label && (
                 <p className="mt-1">Plan: {selectedPlan.label}</p>
+              )}
+              {phoneNumber && (
+                <p className="mt-1">Phone: {phoneNumber}</p>
               )}
             </div>
           )}

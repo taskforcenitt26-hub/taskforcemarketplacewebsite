@@ -35,16 +35,14 @@ const CycleManagement = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <h2 className="text-2xl font-bold text-gray-900">Cycle Management</h2>
-        <span className="text-sm text-gray-600">
-          {filteredCycles.length} of {cycles.length} cycles
-        </span>
+        <span className="text-sm text-gray-600">{filteredCycles.length} of {cycles.length} cycles</span>
       </div>
 
       {/* Filters */}
-      <div className="flex">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"

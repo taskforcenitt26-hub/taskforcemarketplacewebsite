@@ -92,15 +92,15 @@ const AdminDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
                 <h1 className="text-3xl font-extrabold text-white">RECycle Admin Panel</h1>
                 <p className="text-gray-200 mt-1">Welcome back, {user?.email}</p>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 w-full sm:w-auto">
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 px-6 py-3 rounded-xl hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-1 active:scale-95"
+                  className="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 px-6 py-3 rounded-xl hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl font-semibold transform hover:-translate-y-1 active:scale-95"
                 >
                   <Plus size={20} className="text-yellow-700" />
                   <span>Add Cycle</span>
@@ -109,10 +109,39 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Navigation Tabs */}
+          {/* Navigation: mobile dropdown + desktop tabs */}
           <div className="bg-white rounded-2xl shadow-md mb-6 border border-gray-100">
-            <div>
-              <nav className="flex space-x-8 px-6">
+            {/* Mobile: dropdown selector */}
+            <div className="sm:hidden p-4">
+              <label htmlFor="admin-tab-select" className="sr-only">Select section</label>
+              <div className="relative">
+                <select
+                  id="admin-tab-select"
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value)}
+                  className="w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-base font-semibold text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition"
+                >
+                  {tabs.map((tab) => (
+                    <option key={tab.id} value={tab.id}>{tab.label}</option>
+                  ))}
+                </select>
+                {/* Custom chevron icon */}
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-gray-500"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.168l3.71-2.94a.75.75 0 11.94 1.16l-4.24 3.36a.75.75 0 01-.94 0L5.21 8.39a.75.75 0 01.02-1.18z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop: tab bar */}
+            <div className="hidden sm:block">
+              <nav className="flex gap-8 px-6">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}

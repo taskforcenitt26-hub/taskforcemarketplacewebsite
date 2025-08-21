@@ -35,6 +35,8 @@ const SellerCodeModal = ({ cycle, onClose, onVerified }) => {
   const [aadharUrl, setAadharUrl] = useState('');
   // State to track Aadhaar uploading progress
   const [aadharUploading, setAadharUploading] = useState(false);
+  // State to collect buyer phone number
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   // Handle form submission for seller code verification
   const handleSubmit = async (e) => {
@@ -119,9 +121,9 @@ const SellerCodeModal = ({ cycle, onClose, onVerified }) => {
 
   return (
     // Modal backdrop
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-6 overflow-y-auto">
       {/* Modal container */}
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="bg-white rounded-lg max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         {/* Modal header with title and close button */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Seller Verification</h2>
@@ -184,18 +186,18 @@ const SellerCodeModal = ({ cycle, onClose, onVerified }) => {
             </div>
 
             {/* Action buttons */}
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                className="w-full sm:flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading || !sellerCode.trim()} // Disabled if empty or verifying
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Verifying...' : 'Verify & Continue'}
               </button>
@@ -211,7 +213,7 @@ const SellerCodeModal = ({ cycle, onClose, onVerified }) => {
                 {planOptions.map((opt) => (
                   <label 
                     key={opt.key} 
-                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer ${
+                    className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-lg border cursor-pointer ${
                       selectedPlan.key===opt.key ? 'border-yellow-500 bg-yellow-50' : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -225,7 +227,7 @@ const SellerCodeModal = ({ cycle, onClose, onVerified }) => {
                       />
                       <span className="text-sm">{opt.label}</span>
                     </div>
-                    <span className="text-sm font-semibold text-yellow-700">
+                    <span className="text-sm font-semibold text-yellow-700 self-end sm:self-auto">
                       ₹{(opt.rent + opt.deposit).toLocaleString('en-IN')}
                     </span>
                   </label>
@@ -267,12 +269,29 @@ const SellerCodeModal = ({ cycle, onClose, onVerified }) => {
               )}
             </div>
 
+            {/* Phone number field */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
+              <input
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={10}
+                placeholder="10-digit mobile number"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                required
+              />
+              <p className="mt-1 text-xs text-gray-500">We'll save this with your order for contact.</p>
+            </div>
+
             {/* Final action buttons */}
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                className="w-full sm:flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
@@ -287,10 +306,15 @@ const SellerCodeModal = ({ cycle, onClose, onVerified }) => {
                   // Upload Aadhaar if not already uploaded
                   const url = aadharUrl || (await uploadAadhar());
                   if (!url) return;
+                  // Validate phone number (10 digits)
+                  if (!/^\d{10}$/.test(phoneNumber)) {
+                    setError('Please enter a valid 10-digit phone number');
+                    return;
+                  }
                   // Call parent callback with chosen options
-                  onVerified(selectedPlan, includeLock, url);
+                  onVerified(selectedPlan, includeLock, url, phoneNumber);
                 }}
-                className={`flex-1 ${
+                className={`w-full sm:flex-1 ${
                   aadharUploading ? 'bg-yellow-400' : 'bg-yellow-500 hover:bg-yellow-600'
                 } text-black px-4 py-2 rounded-md transition-colors disabled:opacity-50`}
                 disabled={aadharUploading}

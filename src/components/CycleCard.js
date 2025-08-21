@@ -36,7 +36,7 @@ const CycleCard = ({ cycle, onHold, showHoldButton = true, activeHold = null }) 
   };
 
   // After seller code is verified, redirect to payment page with cycle info
-  const handleSellerCodeVerified = (selectedPlan, includeLock, aadharUrl) => {
+  const handleSellerCodeVerified = (selectedPlan, includeLock, aadharUrl, phoneNumber) => {
     setShowSellerCodeModal(false); // close modal
     const computedPrice = (selectedPlan?.rent || 0) + (selectedPlan?.deposit || 0); // calculate total
     navigate('/payment', { // navigate with state
@@ -44,7 +44,8 @@ const CycleCard = ({ cycle, onHold, showHoldButton = true, activeHold = null }) 
         cycle: { ...cycle, computedPrice, planLabel: selectedPlan?.label }, // pass cycle info
         includeLockInitial: !!includeLock, // lock selected?
         selectedPlan, // plan selected by buyer
-        aadharUrl // buyer’s Aadhaar card
+        aadharUrl, // buyer’s Aadhaar card
+        phoneNumber // buyer phone number
       }
     });
   };
@@ -300,7 +301,7 @@ const CycleCard = ({ cycle, onHold, showHoldButton = true, activeHold = null }) 
         <SellerCodeModal
           cycle={cycle}
           onClose={() => setShowSellerCodeModal(false)}
-          onVerified={(selectedPlan, includeLock, aadharUrl) => handleSellerCodeVerified(selectedPlan, includeLock, aadharUrl)}
+          onVerified={(selectedPlan, includeLock, aadharUrl, phoneNumber) => handleSellerCodeVerified(selectedPlan, includeLock, aadharUrl, phoneNumber)}
         />
       )}
     </>

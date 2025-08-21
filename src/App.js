@@ -18,6 +18,7 @@ import PaymentSuccess from './pages/PaymentSuccess'; /* Imports the page shown w
 import PaymentProcessing from './pages/PaymentProcessing'; /* Imports the page shown while payment is still being processed. */
 import AdminDashboard from './pages/admin/AdminDashboard'; /* Imports the Admin Dashboard page component, accessible to admins only. */
 import About from './pages/About'; /* Imports the About page component, likely describing the app or company. */
+import DownloadBill from './pages/DownloadBill'; /* Page to download bill by order + phone */
 
 /* ===============================
    Main App
@@ -47,6 +48,7 @@ function App() { /* Defines the main App component which acts as the entry point
               <Route path="/payment-success" element={<PaymentSuccess />} /> {/* Route for the Payment Success page. */}
               <Route path="/payment-processing" element={<PaymentProcessing />} /> {/* Route for the Payment Processing page. */}
               <Route path="/login" element={<Login />} /> {/* Route for the Login page. */}
+              <Route path="/download-bill" element={<DownloadBill />} /> {/* Route for Bill download */}
             </Routes>
           </main>
           <Footer /> {/* Renders the Footer component at the bottom of the app. */}

@@ -1,8 +1,8 @@
 // Importing required dependencies
-import React from 'react'; // React library for building UI
+import React, { useState } from 'react'; // React library for building UI
 import { useLocation, Link } from 'react-router-dom'; // useLocation to fetch passed state, Link for navigation
-import { CheckCircle, Download, Mail, Home, Calendar, CreditCard } from 'lucide-react'; // Icon components from lucide-react
-import jsPDF from 'jspdf'; // Library for PDF generation
+import { CheckCircle, Download, Home, Calendar, CreditCard } from 'lucide-react'; // Icon components from lucide-react
+import { jsPDF } from 'jspdf'; // Library for PDF generation (v3 uses named export)
 import Logo from '../assets/logoblack.webp'; // Importing logo image to include in receipt
 
 // Main functional component
@@ -10,6 +10,7 @@ const PaymentSuccess = () => {
   const location = useLocation(); // React Router hook to access route state
   // Extracting values passed from previous route via location.state
   const { cycle, orderNumber, paymentMethod, paidAmount, includeLock, selectedPlan } = location.state || {};
+  const [downloadError, setDownloadError] = useState(null);
 
   // Display payment method in UI → 'UPI' if matches, otherwise 'Cash'
   const paymentDisplayUI = /upi/i.test(paymentMethod || '') ? 'UPI' : 'Cash';
@@ -30,8 +31,31 @@ const PaymentSuccess = () => {
     ? totalAmount // Use actual total
     : (baseAmount + (includeLock ? lockPrice : 0)); // Otherwise compute final manually
 
+  // Helper: convert WEBP to PNG data URL via canvas (more reliable for jsPDF)
+  const webpToPngDataUrl = (src) => new Promise((resolve, reject) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const dataUrl = canvas.toDataURL('image/png');
+          resolve({ dataUrl, width: canvas.width, height: canvas.height });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = (e) => reject(e);
+      img.src = src;
+    } catch (e) { reject(e); }
+  });
+
   // Function to generate and download receipt PDF
-  const downloadReceipt = () => {
+  const downloadReceipt = async () => {
     if (!orderNumber) { // Prevent download if no order number
       alert('Order information not available');
       return;
@@ -47,7 +71,7 @@ const PaymentSuccess = () => {
 
     // ===================== HEADER =====================
     doc.setFillColor(...primaryColor); // Yellow background
-    doc.rect(0, 0, pageWidth, 40, 'F'); // Draw filled rectangle at top
+    doc.rect(0, 0, pageWidth, 50, 'F'); // Draw filled rectangle at top (balanced header)
     doc.setTextColor(...darkText); // Set text color
     doc.setFontSize(24); doc.setFont('times', 'bold');
     doc.text('TASKFORCE NIT TRICHY', pageWidth / 2, 15, { align: 'center' }); // Title
@@ -56,12 +80,28 @@ const PaymentSuccess = () => {
     doc.setFontSize(10);
     doc.text('Purchase Receipt', pageWidth / 2, 35, { align: 'center' }); // Small header text
 
-    // Add logo (safe inside try/catch if missing)
+    // Add logo (convert WEBP -> PNG for reliability)
     doc.setTextColor(...darkText);
-    try { doc.addImage(Logo, 'PNG', 15, 5, 15, 30); } catch (_) {}
+    try {
+      const img = await webpToPngDataUrl(Logo);
+      // Scale while preserving aspect ratio to align with three header text lines
+      const maxW = 30; // mm
+      const maxH = 24; // mm
+      const imgRatio = img.width / img.height;
+      let drawW = maxW;
+      let drawH = drawW / imgRatio;
+      if (drawH > maxH) {
+        drawH = maxH;
+        drawW = drawH * imgRatio;
+      }
+      const x = 14; // left padding for better balance with centered text
+      const headerH = 50; // header band height
+      const y = (headerH - drawH) / 2; // vertically center in header band
+      doc.addImage(img.dataUrl, 'PNG', x, y, drawW, drawH, undefined, 'FAST');
+    } catch (_) { /* ignore logo failure */ }
 
     // ===================== ORDER INFORMATION =====================
-    let yPos = 60; // Vertical offset
+    let yPos = 70; // Vertical offset (pushed down due to 50mm header)
     doc.setFontSize(16); doc.setFont('times', 'bold'); doc.text('Order Information', 20, yPos);
     yPos += 15; doc.setFontSize(11); doc.setFont('times', 'normal');
 
@@ -78,8 +118,36 @@ const PaymentSuccess = () => {
     // ===================== PRODUCT DETAILS =====================
     yPos += 30; doc.setFontSize(16); doc.setFont('times', 'bold'); doc.text('Product Details', 20, yPos);
     yPos += 10;
-    // Gray background box
-    doc.setFillColor(...lightGray); doc.rect(20, yPos, pageWidth - 40, 40, 'F'); doc.setDrawColor(200,200,200); doc.rect(20, yPos, pageWidth - 40, 40, 'S');
+
+    // Pre-compute plan wrapping to size the box correctly
+    let planWrapped = null;
+    let planBlockExtra = 0; // extra height beyond base to fit plan
+    if (selectedPlan?.label) {
+      const cleanPlanLabel = String(selectedPlan.label || '')
+        .replace(/\s*\([^)]*\)\s*/g, '') // remove any (...) blocks
+        .replace(/\s{2,}/g, ' ') // collapse multiple spaces
+        .trim();
+      const planText = `Plan: ${cleanPlanLabel}`
+        + (selectedPlan.rent != null ? ` · Rent: Rs. ${Number(selectedPlan.rent).toFixed(2)}` : '')
+        + (selectedPlan.deposit != null ? ` · Deposit: Rs. ${Number(selectedPlan.deposit).toFixed(2)}` : '');
+      const maxLineWidth = pageWidth - 60; // inside margins
+      planWrapped = doc.splitTextToSize(planText, maxLineWidth);
+      // compute additional height needed for plan lines (base reserves ~10mm under brand/model)
+      const planLines = Array.isArray(planWrapped) ? planWrapped.length : 1;
+      const perLine = 5; // mm per line spacing
+      const reserved = 10; // mm reserved in base 40mm box
+      const needed = planLines * perLine;
+      planBlockExtra = Math.max(0, needed - reserved);
+    }
+
+    // Gray background box with dynamic height
+    const baseBoxH = 40;
+    const productBoxH = baseBoxH + planBlockExtra;
+    const boxTopY = yPos; // store top
+    doc.setFillColor(...lightGray);
+    doc.rect(20, boxTopY, pageWidth - 40, productBoxH, 'F');
+    doc.setDrawColor(200,200,200);
+    doc.rect(20, boxTopY, pageWidth - 40, productBoxH, 'S');
 
     // Cycle name
     yPos += 15; doc.setFontSize(14); doc.setFont('times', 'bold');
@@ -90,29 +158,23 @@ const PaymentSuccess = () => {
     doc.text(`Brand: ${cycle?.brand || '-'}`, 25, yPos);
     doc.text(`Model: ${cycle?.model || '-'}`, 100, yPos);
 
-    // Plan details if available
-    if (selectedPlan?.label) {
+    // Plan details inside the box with same font as the rest (Times, normal)
+    if (planWrapped) {
       yPos += 8;
-      doc.setFont('times', 'normal'); doc.setFontSize(9);
-      if (doc.setCharSpace) doc.setCharSpace(0);
-
-      // Build plan string
-      const planText = `Plan: ${selectedPlan.label}`
-        + (selectedPlan.rent != null ? ` · Rent: Rs. ${Number(selectedPlan.rent).toFixed(2)}` : '')
-        + (selectedPlan.deposit != null ? ` · Deposit: Rs. ${Number(selectedPlan.deposit).toFixed(2)}` : '');
-
-      // Wrap plan text if too long
-      const maxLineWidth = pageWidth - 60;
-      const wrapped = doc.splitTextToSize(planText, maxLineWidth);
-      doc.text(wrapped, 25, yPos);
-
-      // Increase yPos if text wraps
-      yPos += (wrapped.length - 1) * 5;
+      doc.setFont('times', 'normal');
+      doc.setFontSize(11);
+      if (doc.setCharSpace) doc.setCharSpace(0); // ensure no extra letter spacing
+      doc.setTextColor(...darkText);
+      doc.text(planWrapped, 25, yPos);
+      // adjust yPos by actual lines drawn
+      yPos += (planWrapped.length - 1) * 5;
+      // keep darkText for subsequent content
     }
 
-    // Price shown in product box
+    // Price shown in product box (align to top-right area consistently)
     doc.setFontSize(14); doc.setFont('times', 'bold'); doc.setTextColor(...primaryColor);
-    doc.text(`Rs. ${Number(baseAmount).toFixed(2)}`, pageWidth - 30, yPos - 5, { align: 'right' });
+    const priceY = boxTopY + 20; // visually aligned to title line
+    doc.text(`Rs. ${Number(baseAmount).toFixed(2)}`, pageWidth - 30, priceY, { align: 'right' });
     doc.setTextColor(...darkText);
 
     // ===================== AMOUNT BREAKDOWN =====================
@@ -145,8 +207,42 @@ const PaymentSuccess = () => {
     doc.setFontSize(8); doc.setFont('times', 'bolditalic');
     doc.text('Caution deposit refund amount will be based on the cycle\'s condition after inspection.', pageWidth / 2, yPos + 32, { align: 'center' });
 
-    // Save receipt as PDF
-    doc.save(`Receipt-${orderNumber}.pdf`);
+    // Save receipt as PDF with robust fallback
+    try {
+      const filename = `Receipt-${orderNumber}-${Date.now()}.pdf`;
+      doc.save(filename);
+      setDownloadError(null);
+    } catch (e) {
+      // Fallback: create blob and trigger anchor download
+      try {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Receipt-${orderNumber}-${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setDownloadError(null);
+      } catch (e2) {
+        // Final fallback: open in a new tab (works on iOS/Safari where download is blocked)
+        try {
+          const dataUrl = doc.output('dataurlstring');
+          const win = window.open();
+          if (win) {
+            win.document.write(`\n<html><head><title>Receipt-${orderNumber}.pdf</title></head><body style="margin:0">\n<iframe src="${dataUrl}" style="border:0; width:100%; height:100vh" allow="autoplay"></iframe>\n</body></html>`);
+            win.document.close();
+            setDownloadError(null);
+          } else {
+            throw new Error('Popup blocked. Please allow popups for this site.');
+          }
+        } catch (e3) {
+          setDownloadError(e3?.message || e2?.message || 'Unknown error while saving PDF');
+          alert('Download failed. Please allow downloads/pop-ups and try again.');
+        }
+      }
+    }
   };
 
   // ===================== UI RENDER =====================
@@ -225,34 +321,7 @@ const PaymentSuccess = () => {
             </div>
           </div>
 
-          {/* -------- TOTAL AMOUNT -------- */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Total Amount</h2>
-
-            {/* Breakdown */}
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span>Cycle Rate</span>
-                <span>Rs. {hasPersistedTotal ? Math.max(0, Number(finalAmount) - (includeLock ? lockPrice : 0)).toFixed(2) : Number(baseAmount).toFixed(2)}</span>
-              </div>
-              {includeLock && (
-                <div className="flex justify-between"><span>Lock Rate</span><span>Rs. {lockPrice.toFixed(2)}</span></div>
-              )}
-              <div className="flex justify-between border-t pt-2 font-semibold text-base">
-                <span>Total</span>
-                <span className="text-yellow-600">Rs. {Number(finalAmount).toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Confirmation email notice */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-center mb-2">
-                <Mail className="w-5 h-5 text-yellow-600 mr-2" />
-                <span className="font-medium text-yellow-900">Confirmation Email Sent</span>
-              </div>
-              <p className="text-sm text-yellow-700">A confirmation email has been sent to your registered email address.</p>
-            </div>
-          </div>
+          {/* Total Amount card removed per request */}
         </div>
 
         {/* ===================== ACTION BUTTONS ===================== */}
@@ -270,6 +339,11 @@ const PaymentSuccess = () => {
             Back to Home
           </Link>
         </div>
+        {downloadError && (
+          <div className="mt-3 text-sm text-red-600">
+            Error downloading receipt: {downloadError}. Try allowing pop-ups/downloads or tap and hold the button to open in a new tab.
+          </div>
+        )}
 
         {/* ===================== SUPPORT SECTION ===================== */}
         <div className="bg-gray-100 rounded-lg p-6 mt-6 text-center">

@@ -94,15 +94,15 @@ const HoldManagement = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h2 className="text-2xl font-bold text-gray-900">Hold Management</h2>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto">
           <span className="text-sm text-gray-600">
             {holds.length} active holds
           </span>
           <button
             onClick={() => window.location.reload()}
-            className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
           >
             <RefreshCw size={16} />
             <span>Refresh</span>

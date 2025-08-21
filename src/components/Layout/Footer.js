@@ -179,7 +179,15 @@ const Footer = () => {
 
         {/* Footer Bottom Section */}
         <div className="border-t border-gray-200 mt-8 pt-6">  
-          <div className="flex flex-col md:flex-row justify-between items-center">  
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">  
+            {/* Download Link to dedicated page */}
+            <Link
+              to="/download-bill"
+              className="px-4 py-2 rounded-md font-semibold bg-yellow-500 hover:bg-yellow-600 text-black"
+              title="Go to Download Bill page"
+            >
+              Download Link
+            </Link>
             {/* Dynamic copyright */}
             <p className="text-gray-600 text-sm">  
               {currentYear} TaskForce RECycle Marketplace. All rights reserved.  
