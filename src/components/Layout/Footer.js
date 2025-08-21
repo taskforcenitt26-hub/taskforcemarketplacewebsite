@@ -186,7 +186,7 @@ const Footer = () => {
               className="px-4 py-2 rounded-md font-semibold bg-yellow-500 hover:bg-yellow-600 text-black"
               title="Go to Download Bill page"
             >
-              Download Link
+              Download Bill
             </Link>
             {/* Dynamic copyright */}
             <p className="text-gray-600 text-sm">  
